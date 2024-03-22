@@ -184,7 +184,7 @@ torch.onnx.export(model,               # model being run
                   )
 ```
 
-You may now use the ONNX model to exported to OpenVINO IR, TensorRT, or Tensorflow/TFlite
+You may now use the ONNX model to be exported to OpenVINO IR, TensorRT, or Tensorflow/TFlite
 
 ### Citations
 
