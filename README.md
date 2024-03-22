@@ -80,7 +80,7 @@ def train_iter(model, optimz, data_load, n_clips = 5, n_clip_frames=8):
     for i, data, target in enumerate(data_load):
         #backward pass for each clip
         for j in range(n_clips):
-          out = F.log_softmax(model(data[:,:,(n_clip_frames)*(j):(n_clip_frames)*(j+1)]), dim=1)
+          out = torch.log(model(data[:,:,(n_clip_frames)*(j):(n_clip_frames)*(j+1)]))
           loss = F.nll_loss(out, target)/n_clips
           loss.backward()
         optimz.step()
@@ -97,7 +97,7 @@ def train_iter(model, optimz, data_load):
 
     optimz.zero_grad()
     for i, (data,_ , target) in enumerate(data_load):
-        out = F.log_softmax(model(data), dim=1)
+        out = torch.log(model(data))
         loss = F.nll_loss(out, target)
         loss.backward()
         optimz.step()
