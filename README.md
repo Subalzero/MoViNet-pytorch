@@ -1,25 +1,39 @@
 # MoViNet-pytorch
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Atze00/MoViNet-pytorch/blob/main/movinet_tutorial.ipynb)  [![Paper](http://img.shields.io/badge/Paper-arXiv.2103.11511-B3181B?logo=arXiv)](https://arxiv.org/abs/2103.11511) <br><br>
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Atze00/MoViNet-pytorch/blob/main/movinet_tutorial.ipynb) [![Paper](http://img.shields.io/badge/Paper-arXiv.2103.11511-B3181B?logo=arXiv)](https://arxiv.org/abs/2103.11511) <br><br>
 Pytorch unofficial implementation of [MoViNets: Mobile Video Networks for Efficient Video Recognition](https://arxiv.org/pdf/2103.11511.pdf). <br>
 Authors: Dan Kondratyuk, Liangzhe Yuan, Yandong Li, Li Zhang, Mingxing Tan, Matthew Brown, Boqing Gong (Google Research) <br>
 [[Authors' Implementation]](https://github.com/tensorflow/models/tree/master/official/vision/beta/projects/movinet)<br>
 
+## Note
+
+This fork is modified to be able to export to TorchScript and ONNX.
+
 ## Stream Buffer
-![stream buffer](https://github.com/Atze00/MoViNet-pytorch/blob/main/figures/Stream_buffer.png)
+
+![stream buffer](https://github.com/Subalzero/MoViNet-pytorch/blob/main/figures/Stream_buffer.png)
 
 #### Clean stream buffer
+
 It is required to clean the buffer after all the clips of the same video have been processed.
+
 ```python
 model.clean_activation_buffers()
 ```
+
 ## Usage
+
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Atze00/MoViNet-pytorch/blob/main/movinet_tutorial.ipynb) <br>
-Click on "Open in Colab" to open an example of training on HMDB-51 <br> 
-### installation 
-```pip install git+https://github.com/Atze00/MoViNet-pytorch.git```
+Click on "Open in Colab" to open an example of training on HMDB-51 <br>
+
+### installation
+
+`pip install git+https://github.com/Atze00/MoViNet-pytorch.git`
 
 #### How to build a model
-Use ```causal = True``` to use the model with stream buffer, causal = False will use standard convolutions<br>
+
+Use `causal = True` to use the model with stream buffer, causal = False will use standard convolutions<br>
+
 ```python
 from movinets import MoViNet
 from movinets.config import _C
@@ -28,8 +42,10 @@ MoViNetA0 = MoViNet(_C.MODEL.MoViNetA0, causal = True, pretrained = True )
 MoViNetA1 = MoViNet(_C.MODEL.MoViNetA1, causal = True, pretrained = True )
 ...
 ```
+
 ##### Load weights
-Use ```pretrained = True``` to use the model with pretrained weights<br>
+
+Use `pretrained = True` to use the model with pretrained weights<br>
 
 ```python
     """
@@ -42,21 +58,22 @@ model = MoViNet(_C.MODEL.MoViNetA0, causal = True, pretrained = True )
 model = MoViNet(_C.MODEL.MoViNetA0, causal = False, pretrained = True )
 ```
 
-
 #### Training loop examples
+
 Training loop with stream buffer
+
 ```python
 def train_iter(model, optimz, data_load, n_clips = 5, n_clip_frames=8):
     """
     In causal mode with stream buffer a single video is fed to the network
-    using subclips of lenght n_clip_frames. 
+    using subclips of lenght n_clip_frames.
     n_clips*n_clip_frames should be equal to the total number of frames presents
     in the video.
-    
+
     n_clips : number of clips that are used
     n_clip_frames : number of frame contained in each clip
     """
-    
+
     #clean the buffer of activations
     model.clean_activation_buffers()
     optimz.zero_grad()
@@ -68,11 +85,13 @@ def train_iter(model, optimz, data_load, n_clips = 5, n_clip_frames=8):
           loss.backward()
         optimz.step()
         optimz.zero_grad()
-        
+
         #clean the buffer of activations
         model.clean_activation_buffers()
 ```
+
 Training loop with standard convolutions
+
 ```python
 def train_iter(model, optimz, data_load):
 
@@ -86,39 +105,41 @@ def train_iter(model, optimz, data_load):
 ```
 
 ## Pretrained models
+
 #### Weights
+
 The weights are loaded from the tensorflow models released by the authors, trained on kinetics.
 
 #### Base Models
 
 Base models implement standard 3D convolutions without stream buffers.
 
-| Model Name | Top-1 Accuracy* | Top-5 Accuracy* | Input Shape |
-|------------|----------------|----------------|-------------|
-| MoViNet-A0-Base | 72.28 | 90.92 | 50 x 172 x 172 | 
-| MoViNet-A1-Base | 76.69 | 93.40 | 50 x 172 x 172 | 
-| MoViNet-A2-Base | 78.62 | 94.17 | 50 x 224 x 224 | 
-| MoViNet-A3-Base | 81.79 | 95.67 | 120 x 256 x 256 | 
-| MoViNet-A4-Base | 83.48 | 96.16 | 80 x 290 x 290 | 
-| MoViNet-A5-Base | 84.27 | 96.39 | 120 x 320 x 320 | 
+| Model Name      | Top-1 Accuracy\* | Top-5 Accuracy\* | Input Shape     |
+| --------------- | ---------------- | ---------------- | --------------- |
+| MoViNet-A0-Base | 72.28            | 90.92            | 50 x 172 x 172  |
+| MoViNet-A1-Base | 76.69            | 93.40            | 50 x 172 x 172  |
+| MoViNet-A2-Base | 78.62            | 94.17            | 50 x 224 x 224  |
+| MoViNet-A3-Base | 81.79            | 95.67            | 120 x 256 x 256 |
+| MoViNet-A4-Base | 83.48            | 96.16            | 80 x 290 x 290  |
+| MoViNet-A5-Base | 84.27            | 96.39            | 120 x 320 x 320 |
 
-
-| Model Name | Top-1 Accuracy* | Top-5 Accuracy* | Input Shape\*\* |
-|------------|----------------|----------------|---------------|
-| MoViNet-A0-Stream | 72.05 | 90.63 | 50 x 172 x 172 | 
-| MoViNet-A1-Stream | 76.45 | 93.25 | 50 x 172 x 172 |
-| MoViNet-A2-Stream | 78.40 | 94.05 | 50 x 224 x 224 |
-
+| Model Name        | Top-1 Accuracy\* | Top-5 Accuracy\* | Input Shape\*\* |
+| ----------------- | ---------------- | ---------------- | --------------- |
+| MoViNet-A0-Stream | 72.05            | 90.63            | 50 x 172 x 172  |
+| MoViNet-A1-Stream | 76.45            | 93.25            | 50 x 172 x 172  |
+| MoViNet-A2-Stream | 78.40            | 94.05            | 50 x 224 x 224  |
 
 \*\*In streaming mode, the number of frames correspond to the total accumulated
 duration of the 10-second clip.
 
-*Accuracy reported on the official repository for the dataset kinetics 600, It has not been tested by me. It should be the same since the tf models and the reimplemented pytorch models output the same results [[Test]](https://github.com/Atze00/MoViNet-pytorch/blob/main/tests/test_pretrained_models.py).
+\*Accuracy reported on the official repository for the dataset kinetics 600, It has not been tested by me. It should be the same since the tf models and the reimplemented pytorch models output the same results [[Test]](https://github.com/Atze00/MoViNet-pytorch/blob/main/tests/test_pretrained_models.py).
 
 I currently haven't tested the speed of the streaming models, feel free to test and contribute.
 
 #### Status
+
 Currently are available the pretrained models for the following architectures:
+
 - [x] MoViNetA1-BASE
 - [x] MoViNetA1-STREAM
 - [x] MoViNetA2-BASE
@@ -133,10 +154,40 @@ Currently are available the pretrained models for the following architectures:
 I currently have no plans to include streaming version of A3,A4,A5. Those models are too slow for most mobile applications.
 
 ### Testing
+
 I recommend to create a new environment for testing and run the following command to install all the required packages: <br>
-    ```pip install -r tests/test_requirements.txt```
-    
+`pip install -r tests/test_requirements.txt`
+
+### Export
+
+You can export the trained models in TorchScript or ONNX.
+
+```python
+# Load a pretrained model or train your own
+model = MoViNet(_C.MODEL.MoViNetA0, causal = False, pretrained = False)
+
+model_scripted = torch.jit.script(model) # Export to TorchScript
+model_scripted.save('model_scripted.pt') # Save
+
+# Input to the model
+x = torch.randn(1, 3, 16, 172, 172, requires_grad=True)
+
+# Export the model
+torch.onnx.export(model,               # model being run
+                  x,                   # model input (or a tuple for multiple inputs)
+                  "movinet_A0.onnx",   # where to save the model (can be a file or file-like object)
+                  export_params=True,        # store the trained parameter weights inside the model file
+                  opset_version=15,          # the ONNX version to export the model to
+                  do_constant_folding=True,  # whether to execute constant folding for optimization
+                  input_names = ['videos'],   # the model's input names
+                  output_names = ['outputs'], # the model's output names
+                  )
+```
+
+You may now use the ONNX model to exported to OpenVINO IR, TensorRT, or Tensorflow/TFlite
+
 ### Citations
+
 ```bibtex
 @article{kondratyuk2021movinets,
   title={MoViNets: Mobile Video Networks for Efficient Video Recognition},
@@ -145,4 +196,3 @@ I recommend to create a new environment for testing and run the following comman
   year={2021}
 }
 ```
-

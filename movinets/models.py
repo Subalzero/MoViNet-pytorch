@@ -7,8 +7,8 @@ from collections import OrderedDict
 import torch
 from torch.nn.modules.utils import _triple, _pair
 import torch.nn.functional as F
-from typing import Any, Callable, Optional, Tuple, Union
-from einops import rearrange
+from typing import Any, Callable, Optional, Tuple, Union, List
+# from einops import rearrange
 from torch import nn, Tensor
 
 
@@ -32,10 +32,10 @@ class Swish(nn.Module):
 class CausalModule(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.activation = None
+        self.activation = Tensor([])
 
     def reset_activation(self) -> None:
-        self.activation = None
+        self.activation = Tensor([])
 
 
 class TemporalCGAvgPool3D(CausalModule):
@@ -48,7 +48,7 @@ class TemporalCGAvgPool3D(CausalModule):
         input_shape = x.shape
         device = x.device
         cumulative_sum = torch.cumsum(x, dim=2)
-        if self.activation is None:
+        if self.activation.shape[0] == 0:
             self.activation = cumulative_sum[:, :, -1:].clone()
         else:
             cumulative_sum += self.activation
@@ -61,9 +61,7 @@ class TemporalCGAvgPool3D(CausalModule):
         return x
 
     @staticmethod
-    def _detach_activation(module: CausalModule,
-                           input: Tensor,
-                           output: Tensor) -> None:
+    def _detach_activation(module: CausalModule, input: Tuple[Tensor], output: Tensor) -> None:
         module.activation.detach_()
 
     def reset_activation(self) -> None:
@@ -238,20 +236,46 @@ class ConvBlock3D(CausalModule):
             x = self._cat_stream_buffer(x, device)
         shape_with_buffer = x.shape
         if self.conv_type == "2plus1d":
-            x = rearrange(x, "b c t h w -> (b t) c h w")
+            # x = rearrange(x, "b c t h w -> (b t) c h w")
+            x = torch.transpose(x, 1, 2)
+            x = torch.reshape(x, (shape_with_buffer[0] * shape_with_buffer[2],
+                                  shape_with_buffer[1],
+                                  shape_with_buffer[3],
+                                  shape_with_buffer[4]))
+            # print(x.shape)
         x = self.conv_1(x)
         if self.conv_type == "2plus1d":
-            x = rearrange(x,
-                          "(b t) c h w -> b c t h w",
-                          t=shape_with_buffer[2])
-
+            # x = rearrange(x,
+            #               "(b t) c h w -> b c t h w",
+            #               t=shape_with_buffer[2])
+            current_shape = x.shape
+            x = torch.reshape(x, (shape_with_buffer[0],
+                                  shape_with_buffer[2],
+                                  current_shape[1],
+                                  current_shape[2],
+                                  current_shape[3]))
+            x = torch.transpose(x, 1, 2)
+            
             if self.conv_2 is not None:
                 if self.dim_pad > 0 and self.causal is True:
                     x = self._cat_stream_buffer(x, device)
-                w = x.shape[-1]
-                x = rearrange(x, "b c t h w -> b c t (h w)")
+                # w = x.shape[-1]
+                # h = x.shape[-2]
+                shape_with_buffer = x.shape
+                # x = rearrange(x, "b c t h w -> b c t (h w)")
+                x = torch.reshape(x, (shape_with_buffer[0],
+                                      shape_with_buffer[1],
+                                      shape_with_buffer[2],
+                                      shape_with_buffer[3] * shape_with_buffer[4]))
                 x = self.conv_2(x)
-                x = rearrange(x, "b c t (h w) -> b c t h w", w=w)
+                current_shape = x.shape
+                # x = rearrange(x, "b c t (h w) -> b c t h w", w=w)
+                x = torch.reshape(x, (current_shape[0],
+                                      current_shape[1],
+                                      current_shape[2],
+                                      current_shape[3] // shape_with_buffer[4],
+                                      shape_with_buffer[4]))
+                # print(x.shape)
         return x
 
     def forward(self, x: Tensor) -> Tensor:
@@ -263,7 +287,7 @@ class ConvBlock3D(CausalModule):
         return x
 
     def _cat_stream_buffer(self, x: Tensor, device: torch.device) -> Tensor:
-        if self.activation is None:
+        if self.activation.shape[0] == 0:
             self._setup_activation(x.shape)
         x = torch.cat((self.activation.to(device), x), 2)
         self._save_in_activation(x)
@@ -273,11 +297,14 @@ class ConvBlock3D(CausalModule):
         assert self.dim_pad > 0
         self.activation = x[:, :, -self.dim_pad:, ...].clone().detach()
 
-    def _setup_activation(self, input_shape: Tuple[float, ...]) -> None:
+    def _setup_activation(self, input_shape: List[int]) -> None:
         assert self.dim_pad > 0
-        self.activation = torch.zeros(*input_shape[:2],  # type: ignore
+        self.activation = torch.zeros([input_shape[0],
+                                       input_shape[1],
                                       self.dim_pad,
-                                      *input_shape[3:])
+                                      input_shape[3],
+                                      input_shape[4]])
+        # print(self.activation.shape)
 # TODO add requirements
 # TODO create a train sample, just so that we can test the training
 
@@ -644,6 +671,8 @@ class MoViNet(nn.Module):
         x = self.avg(x)
         x = self.classifier(x)
         x = x.flatten(1)
+        
+        x = F.softmax(x, dim=1)
 
         return x
 
